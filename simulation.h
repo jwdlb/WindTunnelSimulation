@@ -17,16 +17,21 @@ public:
     int numY;
     int numCells;
     double h;
-    vector<vector<double>> u;
-    vector<vector<double>> v;
-    vector<vector<double>> newU;
-    vector<vector<double>> newV;
-    vector<vector<double>> p;
-    vector<vector<double>> s;
-    vector<vector<double>> m;
-    vector<vector<double>> newM;
+    int numRows;
+    vector<double> u;
+    vector<double> v;
+    vector<double> newU;
+    vector<double> newV;
+    vector<double> p;
+    vector<double> s;
+    vector<double> m;
+    vector<double> newM;
 
     simulation(double density,int numX,int numY,double h);
+
+    inline int gridHelper(int i,int j);
+
+    inline double gridHelperDouble(double i,double j);
 
     void integrate(double dt,double gravity);
 

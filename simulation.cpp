@@ -13,27 +13,29 @@ simulation::simulation(double densityInp, int numXInp, int numYInp, double hInp)
     numY = numYInp + 2;
     numCells = numX * numY;
     h = hInp;
-    vector<double> general_layer(numY);
-    vector<double> m_layer(numY, 1.0);
-    for (int i = 0; i < numX; i++) {
-        u.push_back(general_layer);
-        v.push_back(general_layer);
-        newU.push_back(general_layer);
-        newV.push_back(general_layer);
+    numRows = numY;
 
-        p.push_back(general_layer);
-        s.push_back(general_layer);
+    u.resize(numCells, 0.0);
+    v.resize(numCells, 0.0);
+    newU.resize(numCells, 0.0);
+    newV.resize(numCells, 0.0);
 
-        m.push_back(m_layer);
-        newM.push_back(general_layer);
-    }
+    p.resize(numCells, 0.0);
+    s.resize(numCells, 0.0);
+
+    m.resize(numCells, 1.0);   // m_layer was initialized with 1.0
+    newM.resize(numCells, 0.0);
 }
+
+inline int simulation::gridHelper(int i,int j) {return ((i * numRows) + j);}
+
+inline double simulation::gridHelperDouble(double i,double j) {return ((i * numRows) + j);}
 
 void simulation::integrate(double dt, double gravity) {
     for (int i = 1; i < numX; i++) {
         for (int j = 1; j < numY - 1 ; j++) {
-            if (s[i][j] != 0.0 && s[i][j-1] != 0.0) {
-                v[i][j] += gravity * dt;
+            if (s[gridHelper(i,j)] != 0.0 && s[gridHelper(i,j - 1)] != 0.0) {
+                v[gridHelper(i,j)] += gravity * dt;
             }
         }
     }
@@ -41,30 +43,31 @@ void simulation::integrate(double dt, double gravity) {
 
 void simulation::solveIncompressability(int numIterations, double dt) {
     double cp = density * h / dt;
-    for (int i = 0; i < numIterations; i++) {
+    
+    for (int iter = 0; iter < numIterations; iter++) {
         for (int i = 1; i < numX -1; i++) {
             for (int j = 1; j < numY - 1; j++) {
-                if (s[i][j] == 0.0) {
+                if (s[gridHelper(i,j)] == 0.0) {
                     continue;
                 }
-                double sTemp = s[i][j];
-                double sx0 = s[i-1][j];
-                double sx1 = s[i+1][j];
-                double sy0 = s[i][j-1];
-                double sy1 = s[i][j+1];
+                double sTemp = s[gridHelper(i,j)];
+                double sx0 = s[gridHelper(i - 1,j)];
+                double sx1 = s[gridHelper(i + 1,j)];
+                double sy0 = s[gridHelper(i,j - 1)];
+                double sy1 = s[gridHelper(i,j + 1)];
                 sTemp = sx0 + sx1 + sy0 + sy1;
                 if (sTemp == 0.0) {
                     continue;
                 }
-                double div = u[i+1][j] - u[i][j] + v[i][j+1] - v[i][j];
+                double div = u[gridHelper(i + 1,j)] - u[gridHelper(i,j)] + v[gridHelper(i,j + 1)] - v[gridHelper(i,j)];
                 double pTemp = -div / sTemp;
                 pTemp *= 1.7;
 
-                p[i][j] += cp * pTemp;
-                u[i][j] -= sx0 * pTemp;
-                u[i+1][j] += sx1 * pTemp;
-                v[i][j] -= sy0 * pTemp;
-                v[i][j+1] += sy1 * pTemp;
+                p[gridHelper(i,j)] += cp * pTemp;
+                u[gridHelper(i,j)] -= sx0 * pTemp;
+                u[gridHelper(i + 1,j)] += sx1 * pTemp;
+                v[gridHelper(i,j)] -= sy0 * pTemp;
+                v[gridHelper(i,j + 1)] += sy1 * pTemp;
 
             }
         }
@@ -73,12 +76,12 @@ void simulation::solveIncompressability(int numIterations, double dt) {
 
 void simulation::extrapolate() {
     for (int i = 0; i < numX; i++) {
-        u[i][0] = u[i][1];
-        u[i][numY - 1] = u[i][numY - 2];
+        u[gridHelper(i,0)] = u[gridHelper(i,1)];
+        u[gridHelper(i,numY - 1)] = u[gridHelper(i,numY - 2)];
     }
     for (int i = 0; i < numY; i++) {
-        v[0][i] = v[1][i];
-        v[numX - 1][i] = v[numX - 2][i];
+        u[gridHelper(0,i)] = u[gridHelper(1,i)];
+        u[gridHelper(numX - 1,i)] = u[gridHelper(numX - 2,i)];
     }
 }
 
@@ -92,7 +95,7 @@ double simulation::sampleField(double x, double y, fieldType field) {
 
     double dx = 0.0;
     double dy = 0.0;
-    const vector<vector<double>>* f = nullptr;
+    const vector<double>* f = nullptr;
 
     switch (field) {
         case U_Field: f = &u; dy = h2; break;
@@ -100,6 +103,7 @@ double simulation::sampleField(double x, double y, fieldType field) {
         case S_Field: f = &m; dx = h2; dy = h2; break;
     }
 
+    // Convert world coords -> grid indices
     double x0 = min(floor((x - dx) * h1), numX - 1.0);
     double tx = ((x - dx) - x0 * h) * h1;
     double x1 = min(x0 + 1, numX - 1.0);
@@ -111,18 +115,20 @@ double simulation::sampleField(double x, double y, fieldType field) {
     double sx = 1.0 - tx;
     double sy = 1.0 - ty;
 
-    return (sx * sy * (*f)[x0][y0]) +
-           (tx * sy * (*f)[x1][y0]) +
-           (tx * ty * (*f)[x1][y1]) +
-           (sx * ty * (*f)[x0][y1]);
+    // Bilinear interpolation using 1D indexing
+    return (sx * sy * (*f)[gridHelper(x0, y0)]) +
+           (tx * sy * (*f)[gridHelper(x1, y0)]) +
+           (tx * ty * (*f)[gridHelper(x1, y1)]) +
+           (sx * ty * (*f)[gridHelper(x0, y1)]);
 }
 
+
 double simulation::avgU(int i, int j) {
-    return (u[i][j-1] + u[i][j] + u[i+1][j-1] + u[i+1][j]) * 0.25;
+    return (u[gridHelper(i,j - 1)] + u[gridHelper(i,j)] + u[gridHelper(i + 1, j - 1)] + u[gridHelper(i + 1,j)]) * 0.25;
 }
 
 double simulation::avgV(int i, int j) {
-    return  (v[i][j-1] + v[i][j] + v[i+1][j-1] + v[i+1][j]) * 0.25;
+    return (v[gridHelper(i,j - 1)] + v[gridHelper(i,j)] + v[gridHelper(i + 1, j - 1)] + v[gridHelper(i + 1,j)]) * 0.25;
 }
 
 void simulation::advectVel(double dt) {
@@ -132,28 +138,28 @@ void simulation::advectVel(double dt) {
     for (int i = 1; i < numX - 1; i++) {
         for (int j = 1; j < numY - 1; j++) {
             // U component:
-            if (s[i][j] != 0.0 && s[i-1][j] != 0.0 && j < numY - 1) {
+            if (s[gridHelper(i,j)] != 0.0 && s[gridHelper(i - 1,j)] != 0.0 && j < numY - 1) {
                 double x = i * h;
                 double y = (j * h) + h2;
-                double uTemp = u[i][j];
+                double uTemp = u[gridHelper(i,j)];
                 double vTemp = avgV(i, j);
 
                 x -= (dt * uTemp);
                 y -= (dt * vTemp);
                 uTemp = sampleField(x, y, U_Field);
-                newU[i][j] = uTemp;
+                newU[gridHelper(i,j)] = uTemp;
             }
             // V component:
-            if (s[i][j] != 0.0 && s[i][j-1] != 0.0 && i < numX - 1) {
+            if (s[gridHelper(i,j)] != 0.0 && s[gridHelper(i,j - 1)] != 0.0 && i < numX - 1) {
                 double x = (i * h) + h2;
                 double y = (j * h);
                 double uTemp = avgU(i, j);
-                double vTemp = v[i][j];
+                double vTemp = v[gridHelper(i,j)];
 
                 x -= (dt * uTemp);
                 y -= (dt * vTemp);
                 vTemp = sampleField(x, y, V_Field);
-                newV[i][j] = vTemp;
+                newV[gridHelper(i,j)] = vTemp;
             }
         }
     }
@@ -167,13 +173,13 @@ void simulation::advectSmoke(double dt) {
 
     for (int i = 1; i < numX - 1; i++) {
         for (int j = 1; j < numY - 1; j++) {
-            if (s[i][j] != 0.0) {
-                double uTemp = (u[i][j] + u[i+1][j]) * 0.5;
-                double vTemp = (v[i][j] + v[i][j+1]) * 0.5;
+            if (s[gridHelper(i,j)] != 0.0) {
+                double uTemp = (u[gridHelper(i,j)] + u[gridHelper(i + 1,j)]) * 0.5;
+                double vTemp = (v[gridHelper(i,j)] + v[gridHelper(i,j + 1)]) * 0.5;
                 double x = (i * h) + h2 - (dt * uTemp);
                 double y = (j * h) + h2 - (dt * vTemp);
 
-                newM[i][j] = sampleField(x, y, S_Field);
+                newM[gridHelper(i,j)] = sampleField(x, y, S_Field);
             }
         }
     }
@@ -182,9 +188,7 @@ void simulation::advectSmoke(double dt) {
 
 void simulation::clearOldPressures() {
     for (int i = 0; i < p.size(); i++) {
-        for (int j = 0; j < p[i].size(); j++) {
-            p[i][j] = 0.0;
-        }
+        p[i]= 0.0;
     }
 }
 
@@ -193,7 +197,7 @@ void simulation::setObstacle(double xNorm, double yNorm) {
     double worldX = xNorm * (numX - 2) * h;
     double worldY = yNorm * (numY - 2) * h;
     double radius = 0.1 * (numX - 2) * h; // radius in world units
-
+    double r2 = radius * radius;
     // Loop over internal grid cells only
     for (int i = 1; i < numX - 1; i++) {
         for (int j = 1; j < numY - 1; j++) {
@@ -203,14 +207,15 @@ void simulation::setObstacle(double xNorm, double yNorm) {
             double dx = cellX - worldX;
             double dy = cellY - worldY;
 
-            if ((dx*dx + dy*dy) < radius*radius) {
+            if ((dx*dx + dy*dy) < r2) {
+                int idx = gridHelper(i,j);
                 // Mark as solid
-                s[i][j] = 0.0;
-                m[i][j] = 1.0;
+                s[idx] = 0.0;
+                m[idx] = 1.0;
 
                 // Stop velocity inside the obstacle
-                u[i][j] = u[i+1][j] = 0.0;
-                v[i][j] = v[i][j+1] = 0.0;
+                u[idx] = u[gridHelper(i + 1,j)] = 0.0;
+                v[idx] = v[gridHelper(i,j + 1)] = 0.0;
             }
         }
     }
@@ -225,10 +230,10 @@ void simulation::setScene() {
             if (i == 0 || j == 0 || j == numY -1) {
                 sTemp = 0.0; // Solid
             }
-            s[i][j] = sTemp;
+            s[gridHelper(i,j)] = sTemp;
 
             if (i == 1) {
-                u[i][j] = initialVelocity;
+                u[gridHelper(i,j)] = initialVelocity;
             }
         }
     }
@@ -238,7 +243,7 @@ void simulation::setScene() {
     int maxHeight = floor((0.5 * numY) + (0.5 * inletHeight));
 
     for (int i = minHeight; i < maxHeight; i++) {
-        m[0][i] = 0.0;
+        m[i] = 0.0;
     }
 
     setObstacle(0.3,0.5);
