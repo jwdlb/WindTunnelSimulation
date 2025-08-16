@@ -61,7 +61,7 @@ void simulation::solveIncompressability(int numIterations, double dt) {
                 }
                 double div = u[gridHelper(i + 1,j)] - u[gridHelper(i,j)] + v[gridHelper(i,j + 1)] - v[gridHelper(i,j)];
                 double pTemp = -div / sTemp;
-                pTemp *= 1.7;
+                pTemp *= 1.9;
 
                 p[gridHelper(i,j)] += cp * pTemp;
                 u[gridHelper(i,j)] -= sx0 * pTemp;
