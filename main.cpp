@@ -2,6 +2,7 @@
 #include "simulationGPU.h"
 #include <chrono>
 #include <iostream>
+#include <string>
 
 int main() {
     const int windowWidth = 2000;
@@ -11,10 +12,15 @@ int main() {
     int numX = windowWidth / gridSize - 2;
     int numY = windowHeight / gridSize - 2;
 
+    int selectedShape = 0;
     simulationGPU sim(1000.0, numX, numY, 0.01);
-    sim.setScene();
+    sim.setScene(0);
 
-    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML Simulation - Optimized");
+    std::vector<string> shapes = {"circle", "ellipse","square","wing"};
+    std::vector<float> sStore;
+    sim.getSolidFluidGrid(sStore);
+
+    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Wind Tunnel Simulation");
 
     // OPTIMIZATION 1: Create texture for fast pixel drawing
     sf::Texture texture;
@@ -22,6 +28,14 @@ int main() {
     sf::Sprite sprite;
     sprite.setTexture(texture);
     sprite.setScale(gridSize, gridSize);
+    sf::Font font;
+    if (!font.loadFromFile("arial.ttf")) {
+        std::cerr << "Font failed to load!" << std::endl;
+        return -1;
+    } else {
+        std::cout << "Font loaded successfully" << std::endl;
+    }
+
 
     // OPTIMIZATION 2: Pre-allocate pixel buffer
     std::vector<sf::Uint8> pixels(numX * numY * 4); // RGBA format
@@ -34,6 +48,20 @@ int main() {
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed)
                 window.close();
+            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+                sf::Vector2i mousePos = sf::Mouse::getPosition(window);
+
+                // Check which button was clicked
+                for (int i = 0; i < 4; i++) {
+                    sf::FloatRect buttonRect(20 + i * 230, 10, 220, 60);
+                    if (buttonRect.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
+                        selectedShape = i;
+                        sim.setScene(i);
+                        sim.getSolidFluidGrid(sStore);
+                        //std::cout << "Selected Shape: " << i + 1 << std::endl;
+                    }
+                }
+            }
         }
 
         // OPTIMIZATION 3: Time simulation separately
@@ -43,20 +71,55 @@ int main() {
 
         std::vector<float> mStore;
         sim.getSmokeDensityGrid(mStore);
-
+        std::vector<float> pStore;
+        sim.getPressureGrid(pStore);
+        bool smokeUI = true;
+        bool outline = true;
         // OPTIMIZATION 4: Fast pixel buffer update (single loop)
         auto renderStart = std::chrono::high_resolution_clock::now();
         for (int i = 1; i < sim.numX - 1; i++) {
             for (int j = 1; j < sim.numY - 1; j++) {
                 int simIdx = (i * sim.numY) + j;
-                sf::Uint8 gray = static_cast<sf::Uint8>(std::clamp(mStore[simIdx], 0.0f, 1.0f) * 255);
-
-                // Direct pixel access - much faster than rectangles
+                sf::Uint8 grey;
+                if (smokeUI) {
+                    grey = static_cast<sf::Uint8>(std::clamp(mStore[simIdx], 0.0f, 1.0f) * 255);
+                }else {
+                    grey = static_cast<sf::Uint8>(std::clamp(pStore[simIdx], 0.0f, 1.0f) * 255);
+                }
                 int pixelIdx = ((j-1) * numX + (i-1)) * 4;
-                pixels[pixelIdx] = gray;     // Red
-                pixels[pixelIdx + 1] = gray; // Green
-                pixels[pixelIdx + 2] = gray; // Blue
-                pixels[pixelIdx + 3] = 255;  // Alpha
+
+                if (sStore[simIdx] != 0.0f) {
+                    // Inside solid object: keep grey
+                    pixels[pixelIdx]     = grey;
+                    pixels[pixelIdx + 1] = grey;
+                    pixels[pixelIdx + 2] = grey;
+                    pixels[pixelIdx + 3] = 255;
+                } else{
+                    // Empty space: check if next to a solid pixel
+                    bool isBorder = false;
+                    for (int dx = -1; dx <= 1 && !isBorder; dx++) {
+                        for (int dy = -1; dy <= 1 && !isBorder; dy++) {
+                            int neighborIdx = ((i + dx) * sim.numY) + (j + dy);
+                            if (sStore[neighborIdx] != 0.0f) {
+                                isBorder = true;
+                            }
+                        }
+                    }
+
+                    if (isBorder && outline) {
+                        // Draw blue outline
+                        pixels[pixelIdx]     = 0;   // Red
+                        pixels[pixelIdx + 1] = 0;   // Green
+                        pixels[pixelIdx + 2] = 50;  // Blue
+                        pixels[pixelIdx + 3] = 200; // Alpha
+                    } else {
+                        // Empty background (fully transparent or white)
+                        pixels[pixelIdx]     = 255; // White background
+                        pixels[pixelIdx + 1] = 255;
+                        pixels[pixelIdx + 2] = 255;
+                        pixels[pixelIdx + 3] = 255;
+                    }
+                }
             }
         }
 
@@ -65,6 +128,33 @@ int main() {
 
         window.clear(sf::Color::White);
         window.draw(sprite);  // Single draw call!
+
+        window.clear(sf::Color::White);
+
+        window.draw(sprite); // simulation
+
+        // Top bar background
+        sf::RectangleShape topBar(sf::Vector2f(windowWidth, 80));
+        topBar.setFillColor(sf::Color(50, 50, 50));
+        topBar.setPosition(0, 0);
+        window.draw(topBar);
+
+        // Draw shape buttons
+        for (int i = 0; i < 4; i++) {
+            sf::RectangleShape button(sf::Vector2f(220, 60));
+            button.setPosition(20 + i * 230, 10);
+            button.setFillColor(i == selectedShape ? sf::Color(150, 150, 250) : sf::Color(100, 100, 100));
+            window.draw(button);
+
+            sf::Text text;
+            text.setFont(font);
+            text.setString("Shape " + shapes[i]);
+            text.setCharacterSize(25);
+            text.setFillColor(sf::Color::White);
+            text.setPosition(80 + i * 230, 22);
+            window.draw(text);
+        }
+
         window.display();
         auto renderEnd = std::chrono::high_resolution_clock::now();
 

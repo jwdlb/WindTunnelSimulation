@@ -10,8 +10,7 @@ public:
     ~simulationGPU();
 
     void simulate(float dt, float gravity, int numIterations);
-    void setScene();
-    void setObstacle(float xNorm, float yNorm);
+    void setScene(int shape);
     void runSolveIncompressibility(int numIterations, float dt);
     void runAdvections(float dt);
     void runExtrapolation();
@@ -20,6 +19,8 @@ public:
     void getVelocityGrids(vector<float>& u, vector<float>& v);
     void getSmokeDensityGrid(vector<float>& m);
     void getPressureGrid(vector<float>& p);
+    void getSolidFluidGrid(vector<float>& s);
+    void changeShape(int shape);
 
     int numX, numY, numCells, numRows;
     float h, density;

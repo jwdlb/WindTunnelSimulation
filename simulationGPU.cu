@@ -101,7 +101,20 @@ __device__ float sampleField(float x, float y, int fieldType, float *u, float *v
            (sx * ty * f[gridIndex(x0,y1,numY)]);
 }
 
+// __device__ float naca0012(float x, float chord) {
+//     // NACA 0012 thickness distribution (12% of chord)
+//     float t = 0.12f; // thickness ratio
+//     float term1 = 0.2969f * sqrtf(x/chord);
+//     float term2 = -0.1260f * (x/chord);
+//     float term3 = -0.3516f * powf(x/chord,2);
+//     float term4 = 0.2843f * powf(x/chord,3);
+//     float term5 = -0.1015f * powf(x/chord,4);
+//     return 0.5f * t * chord * (term1 + term2 + term3 + term4 + term5);
+// }
+
 // GPU kernels: -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+    // Kernels for the fluid simulations:
 
 __global__ void integrate(float *v, float *s, int numX, int numY, float gravity, float dt) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -218,6 +231,8 @@ __global__ void advectSmoke(float dt, float h, float *u, float *v, float *s, flo
     }
 }
 
+    // Kernels for setting up the environment in the application:
+
 __global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *v, float *m) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
@@ -248,7 +263,7 @@ __global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *
     }
 }
 
-__global__ void setUpObstacleInMemory(int numX, int numY, float *s, float *u, float *v, float *m, float xNorm, float yNorm, float h) {
+__global__ void setUpCircleObstacle(int numX, int numY, float *s, float *u, float *v, float *m, float xNorm, float yNorm, float h) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -273,6 +288,105 @@ __global__ void setUpObstacleInMemory(int numX, int numY, float *s, float *u, fl
         v[idx] = v[gridIndex(i, j + 1, numY)] = 0.0f;
     }
 }
+
+__global__ void setUpEllipseObstacle(int numX, int numY, float *s, float *u, float *v, float *m, float xNorm, float yNorm, float h) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (i <= 0 || i >= numX - 1 || j <= 0 || j >= numY - 1) return;
+
+    float worldX = xNorm * (numX - 2) * h;
+    float worldY = yNorm * (numY - 2) * h;
+    float radiusX = 0.16f * (numX - 2) * h;
+    float radiusY = 0.12f * (numY - 2) * h;
+
+    float cellX = (i + 0.5f) * h;
+    float cellY = (j + 0.5f) * h;
+    float dx = (cellX - worldX) / radiusX;
+    float dy = (cellY - worldY) / radiusY;
+
+
+    if (dx*dx + dy*dy < 1.0f) {
+        int idx = gridIndex(i,j,numY);
+        s[idx] = 0.0f;   // mark solid
+        m[idx] = 1.0f;   // smoke/marker solid
+
+        u[idx] = u[gridIndex(i + 1, j, numY)] = 0.0f;
+        v[idx] = v[gridIndex(i, j + 1, numY)] = 0.0f;
+    }
+}
+
+__global__ void setUpSquareObstacle(int numX, int numY, float *s, float *u, float *v, float *m, float xNorm, float yNorm, float h) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (i <= 0 || i >= numX - 1 || j <= 0 || j >= numY - 1) return;
+
+    // Center of the square in world coordinates
+    float worldX = xNorm * (numX - 2) * h;
+    float worldY = yNorm * (numY - 2) * h;
+
+    // Half side length in world coordinates
+    float halfSide = 0.5f * 0.16f * (numX - 2) * h;
+
+    float cellX = (i + 0.5f) * h;
+    float cellY = (j + 0.5f) * h;
+    float dx = fabsf(cellX - worldX);
+    float dy = fabsf(cellY - worldY);
+
+    // Square test
+    if (dx <= halfSide && dy <= halfSide) {
+        int idx = gridIndex(i, j, numY);
+        s[idx] = 0.0f;   // mark solid
+        m[idx] = 1.0f;   // smoke/marker solid
+
+        u[idx] = u[gridIndex(i + 1, j, numY)] = 0.0f;
+        v[idx] = v[gridIndex(i, j + 1, numY)] = 0.0f;
+    }
+}
+
+__device__ float nacaThickness(float x, float chord, float t) {
+    float X = x / chord;
+    return 0.5f * t * chord * (0.2969f*sqrtf(X) - 0.1260f*X - 0.3516f*X*X + 0.2843f*X*X*X - 0.1015f*X*X*X*X);
+}
+
+__global__ void setUpWingObstacle(int numX, int numY, float *s, float *u, float *v, float *m,
+                                  float xNorm, float yNorm, float h) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (i <= 0 || i >= numX - 1 || j <= 0 || j >= numY - 1) return;
+
+    float worldX = xNorm * (numX - 2) * h; // leading edge
+    float worldY = yNorm * (numY - 2) * h; // flat bottom reference
+
+    float chord = 0.3f * (numX - 2) * h;      // chord length
+    float thickness = 0.5f * (numY - 2) * h; // thick
+    float angleDeg = 6.0f;                   // pitch angle
+    float angleRad = angleDeg * 3.14159265f / 180.0f;
+
+    // Flip y-axis so j=0 is bottom
+    float cellY = (numY - 1 - j + 0.5f) * h;
+    float cellX = (i + 0.5f) * h;
+    float xLocal = cellX - worldX;
+
+    if (xLocal >= 0.0f && xLocal <= chord) {
+        float yBottom = worldY + xLocal * -tanf(angleRad); // tilt the bottom
+        float yTop = yBottom + nacaThickness(xLocal, chord, thickness); // curved top
+
+        if (cellY >= yBottom && cellY <= yTop) {
+            int idx = gridIndex(i, j, numY);
+            s[idx] = 0.0f;   // mark solid
+            m[idx] = 1.0f;   // marker solid
+
+            u[idx] = u[gridIndex(i + 1, j, numY)] = 0.0f;
+            v[idx] = v[gridIndex(i, j + 1, numY)] = 0.0f;
+        }
+    }
+}
+
+
+
 
 // Runner methods: ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -358,19 +472,41 @@ void simulationGPU::getPressureGrid(vector<float>& p) {
     cudaMemcpy(p.data(), d_p, numCells * sizeof(float), cudaMemcpyDeviceToHost);
 }
 
+void simulationGPU::getSolidFluidGrid(vector<float>& s) {
+    s.resize(numCells);
+    cudaMemcpy(s.data(), d_s, numCells * sizeof(float), cudaMemcpyDeviceToHost);
+}
+
 // Setting up environment / scene: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void simulationGPU::setScene() {
+void simulationGPU::setScene(int shape) {
     dim3 blockSize(16,16);
     dim3 gridSize((numX + 15)/16, (numY + 15)/16);
-
+    cout << "shape: " << shape << endl;
     // Initialize the scene
     setUpSceneMemory<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m);
     cudaDeviceSynchronize();
 
     // Add obstacle at normalized coordinates (0.3, 0.5)
-    setUpObstacleInMemory<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, 0.3f, 0.5f, h);
+    switch (shape) {
+        case 0:
+            setUpCircleObstacle<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, 0.3f, 0.5f, h);
+            break;
+        case 1:
+            setUpEllipseObstacle<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, 0.3f, 0.5f, h);
+            break;
+        case 2:
+            setUpSquareObstacle<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, 0.3f, 0.5f, h);
+            break;
+        case 3:
+            setUpWingObstacle<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, 0.3f, 0.5f, h);
+            break;
+    }
     cudaDeviceSynchronize();
+}
+
+void simulationGPU::changeShape(int shape) {
+ setScene(shape);
 }
 
 // Simulation coordination, singular run: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
