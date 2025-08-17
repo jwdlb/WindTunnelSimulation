@@ -16,9 +16,11 @@ int main() {
     simulationGPU sim(1000.0, numX, numY, 0.01);
     sim.setScene(0);
 
-    std::vector<string> shapes = {"circle", "ellipse","square","wing"};
+    std::vector<string> shapes = {"Circle", "Ellipse","Square","Wing"};
     std::vector<float> sStore;
     sim.getSolidFluidGrid(sStore);
+    bool smokeUI = true;
+    bool outline = true;
 
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Wind Tunnel Simulation");
 
@@ -53,13 +55,17 @@ int main() {
 
                 // Check which button was clicked
                 for (int i = 0; i < 4; i++) {
-                    sf::FloatRect buttonRect(20 + i * 230, 10, 220, 60);
+                    sf::FloatRect buttonRect(10 + i * 230, 10, 220, 60);
                     if (buttonRect.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
                         selectedShape = i;
                         sim.setScene(i);
                         sim.getSolidFluidGrid(sStore);
                         //std::cout << "Selected Shape: " << i + 1 << std::endl;
                     }
+                }
+                sf::FloatRect buttonRect(10 + 4 * 230, 10, 220, 60);
+                if (buttonRect.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
+                    outline = !outline;
                 }
             }
         }
@@ -73,8 +79,7 @@ int main() {
         sim.getSmokeDensityGrid(mStore);
         std::vector<float> pStore;
         sim.getPressureGrid(pStore);
-        bool smokeUI = true;
-        bool outline = true;
+
         // OPTIMIZATION 4: Fast pixel buffer update (single loop)
         auto renderStart = std::chrono::high_resolution_clock::now();
         for (int i = 1; i < sim.numX - 1; i++) {
@@ -133,27 +138,40 @@ int main() {
 
         window.draw(sprite); // simulation
 
-        // Top bar background
-        sf::RectangleShape topBar(sf::Vector2f(windowWidth, 80));
-        topBar.setFillColor(sf::Color(50, 50, 50));
-        topBar.setPosition(0, 0);
-        window.draw(topBar);
+        // // Top bar background
+        // sf::RectangleShape topBar(sf::Vector2f(windowWidth, 80));
+        // topBar.setFillColor(sf::Color(50, 50, 50));
+        // topBar.setPosition(0, 0);
+        // window.draw(topBar);
 
         // Draw shape buttons
         for (int i = 0; i < 4; i++) {
             sf::RectangleShape button(sf::Vector2f(220, 60));
-            button.setPosition(20 + i * 230, 10);
+            button.setPosition(10 + i * 230, 10);
             button.setFillColor(i == selectedShape ? sf::Color(150, 150, 250) : sf::Color(100, 100, 100));
             window.draw(button);
 
             sf::Text text;
             text.setFont(font);
-            text.setString("Shape " + shapes[i]);
+            text.setString(shapes[i]);
             text.setCharacterSize(25);
             text.setFillColor(sf::Color::White);
-            text.setPosition(80 + i * 230, 22);
+            text.setPosition(70 + i * 230, 22);
             window.draw(text);
         }
+
+        sf::RectangleShape button(sf::Vector2f(220, 60));
+        button.setPosition(10 + 4 * 230, 10);
+        button.setFillColor(outline ? sf::Color(0, 150, 0) : sf::Color(100, 100, 100));
+        window.draw(button);
+
+        sf::Text text;
+        text.setFont(font);
+        text.setString("Shape Outline");
+        text.setCharacterSize(25);
+        text.setFillColor(sf::Color::White);
+        text.setPosition(40 + 4 * 230, 22);
+        window.draw(text);
 
         window.display();
         auto renderEnd = std::chrono::high_resolution_clock::now();
