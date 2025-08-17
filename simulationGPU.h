@@ -1,43 +1,34 @@
-//
-// Created by jackw on 16/08/2025.
-//
-
 #ifndef SIMULATIONGPU_H
 #define SIMULATIONGPU_H
-
-
+#include <cuda_runtime.h>
+#include <vector>
+using namespace std;
 
 class simulationGPU {
 public:
-    simulation(float densityInp, int numXInp, int numYInp, float hInp);
+    simulationGPU(float densityInp, int numXInp, int numYInp, float hInp);
+    ~simulationGPU();
 
     void simulate(float dt, float gravity, int numIterations);
     void setScene();
     void setObstacle(float xNorm, float yNorm);
+    void runSolveIncompressibility(int numIterations, float dt);
+    void runAdvections(float dt);
+    void runExtrapolation();
+    void runClearOldPressures();
+    void runIntegration(float dt, float gravity);
+    void getVelocityGrids(vector<float>& u, vector<float>& v);
+    void getSmokeDensityGrid(vector<float>& m);
+    void getPressureGrid(vector<float>& p);
 
-    float sampleField(float x, float y, int field); // field: 0=U,1=V,2=M
+    int numX, numY, numCells, numRows;
+    float h, density;
 
-private:
-    inline int gridIndex(int i, int j) const { return i + j * numX; }
-
-    int numX, numY;
-    int numCells;
-    float h;
-    float density;
-
-    std::vector<float> u, v, newU, newV;
-    std::vector<float> m, newM;
-    std::vector<float> p, s;
-
-    // Core CPU methods (can migrate to GPU later)
-    void integrate(float dt, float gravity);
-    void solveIncompressability(int numIterations, float dt);
-    void advectVel(float dt);
-    void advectSmoke(float dt);
-    void extrapolate();
-    void clearOldPressures();
+    // Device arrays
+    float *d_u, *d_v, *d_newU, *d_newV;
+    float *d_m, *d_newM;
+    float *d_p, *d_s;
 };
-
 
 
 #endif //SIMULATIONGPU_H

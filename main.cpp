@@ -1,5 +1,5 @@
 #include <SFML/Graphics.hpp>
-#include "simulation.h"
+#include "simulationGPU.h"
 #include <chrono>
 #include <iostream>
 
@@ -11,7 +11,7 @@ int main() {
     int numX = windowWidth / gridSize - 2;
     int numY = windowHeight / gridSize - 2;
 
-    simulation sim(1000.0, numX, numY, 0.01);
+    simulationGPU sim(1000.0, numX, numY, 0.01);
     sim.setScene();
 
     sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "SFML Simulation - Optimized");
@@ -41,12 +41,15 @@ int main() {
         sim.simulate(1.0 / 120.0, 0.0, 40); // Reduce iterations to match JS
         auto simEnd = std::chrono::high_resolution_clock::now();
 
+        std::vector<float> mStore;
+        sim.getSmokeDensityGrid(mStore);
+
         // OPTIMIZATION 4: Fast pixel buffer update (single loop)
         auto renderStart = std::chrono::high_resolution_clock::now();
         for (int i = 1; i < sim.numX - 1; i++) {
             for (int j = 1; j < sim.numY - 1; j++) {
-                int simIdx = sim.gridHelper(i, j);
-                sf::Uint8 gray = static_cast<sf::Uint8>(std::clamp(sim.m[simIdx], 0.0, 1.0) * 255);
+                int simIdx = (i * sim.numY) + j;
+                sf::Uint8 gray = static_cast<sf::Uint8>(std::clamp(mStore[simIdx], 0.0f, 1.0f) * 255);
 
                 // Direct pixel access - much faster than rectangles
                 int pixelIdx = ((j-1) * numX + (i-1)) * 4;

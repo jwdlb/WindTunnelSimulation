@@ -14,7 +14,7 @@ set(GLEW_LIBRARY_DIR "C:/dev/glew-2.1.0/lib/Release/x64")
 
 # Add executable
 # add_executable(WindTunnelSim simulation.h simulation.cpp main.cpp)
-add_executable(WindTunnelSim main.cpp simulation.cpp simulation.h)
+add_executable(WindTunnelSim main.cpp simulation.cpp simulation.h simulationGPU.h simulationGPU.cu)
 
 # Include headers
 target_include_directories(WindTunnelSim PRIVATE ${SFML_INCLUDE_DIR} ${GLEW_INCLUDE_DIR})

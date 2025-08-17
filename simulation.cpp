@@ -80,8 +80,8 @@ void simulation::extrapolate() {
         u[gridHelper(i,numY - 1)] = u[gridHelper(i,numY - 2)];
     }
     for (int i = 0; i < numY; i++) {
-        u[gridHelper(0,i)] = u[gridHelper(1,i)];
-        u[gridHelper(numX - 1,i)] = u[gridHelper(numX - 2,i)];
+        v[gridHelper(0,i)] = v[gridHelper(1,i)];
+        v[gridHelper(numX - 1,i)] = v[gridHelper(numX - 2,i)];
     }
 }
 
