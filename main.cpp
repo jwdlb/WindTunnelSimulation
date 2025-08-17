@@ -6,7 +6,7 @@
 int main() {
     const int windowWidth = 2000;
     const int windowHeight = 1100;
-    const int gridSize = 8;
+    const int gridSize = 2;
 
     int numX = windowWidth / gridSize - 2;
     int numY = windowHeight / gridSize - 2;

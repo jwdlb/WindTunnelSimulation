@@ -238,7 +238,7 @@ void simulation::setScene() {
         }
     }
 
-    double inletHeight = 0.2 * numY;
+    double inletHeight = 0.14 * numY;
     int minHeight = floor((0.5 * numY) - (0.5 * inletHeight));
     int maxHeight = floor((0.5 * numY) + (0.5 * inletHeight));
 
