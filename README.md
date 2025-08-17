@@ -2,7 +2,7 @@
 
 WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunnel environemnt, around an object of the user's choice. Utilising the Cuda GPU acceleration libary, it provides a high frame rate, high resolution image.
 
-<img src="simulationImg.png">
+<img src="simulationImg.png" style="box-shadow: 5px 5px 15px black;">
 
 ## Features
 
@@ -45,3 +45,4 @@ We welcome contributions! Please fork the repository and submit pull requests fo
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
