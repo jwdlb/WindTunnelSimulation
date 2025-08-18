@@ -26,10 +26,10 @@ public:
 
     int numX, numY, numCells, numRows;
     float h, density;
-    int shape;
 
 
 private:
+    int shape;
     float inletVelocity, relativeInletHeight;
 
 
