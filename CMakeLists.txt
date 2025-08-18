@@ -17,7 +17,7 @@ set(IMGUI_SFML_INCLUDE_DIR "C:/dev/vcpkg/installed/x64-windows/include")
 set(IMGUI_SFML_LIBRARY_DIR "C:/dev/vcpkg/installed/x64-windows/lib")
 
 # Add executable
-add_executable(WindTunnelSim main.cpp simulation.cpp simulation.h simulationGPU.h simulationGPU.cu)
+add_executable(WindTunnelSim main.cpp simulationGPU.h simulationGPU.cu)
 
 # Include headers
 target_include_directories(WindTunnelSim PRIVATE ${SFML_INCLUDE_DIR} ${GLEW_INCLUDE_DIR} ${IMGUI_SFML_INCLUDE_DIR})

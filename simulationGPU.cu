@@ -258,8 +258,12 @@ __global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *
     int minHeight = floor((0.5 * numY) - (0.5 * inletHeight));
     int maxHeight = floor((0.5 * numY) + (0.5 * inletHeight));
     if (j >= minHeight && j < maxHeight && i == 0) {
-        m[idx] = 0.0f; // mark as fluid for inlet
+        m[idx] = 0.0f; // mark as smoky for inlet
     }
+    if ((j < minHeight || j >= maxHeight) && i == 0) {
+        m[idx] = 1.0f;
+    }
+
 }
 
 __global__ void setUpCircleObstacle(int numX, int numY, float *s, float *u, float *v, float *m, float xNorm, float yNorm, float h) {
@@ -472,7 +476,6 @@ void simulationGPU::getSolidFluidGrid(vector<float>& s) {
 void simulationGPU::setScene() {
     dim3 blockSize(16,16);
     dim3 gridSize((numX + 15)/16, (numY + 15)/16);
-    cout << "shape: " << shape << endl;
     // Initialize the scene
     setUpSceneMemory<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, inletVelocity, relativeInletHeight);
     cudaDeviceSynchronize();
@@ -502,13 +505,11 @@ void simulationGPU::updateShape(int shapeInp) {
 
 void simulationGPU::updateInletVel(float inletVelocityInp) {
     inletVelocity = inletVelocityInp;
-    cout << "inletVelocity: " << inletVelocity << endl;
     setScene();
 }
 
 void simulationGPU::updateInletSize(float inletSizeInp) {
     relativeInletHeight = inletSizeInp;
-    cout << "relativeInletHeight: " << relativeInletHeight << endl;
     setScene();
 }
 

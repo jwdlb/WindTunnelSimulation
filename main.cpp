@@ -51,12 +51,7 @@ int main() {
     sprite.setScale(gridSize, gridSize);
 
     sf::Font font;
-    if (!font.loadFromFile("arial.ttf")) {
-        std::cerr << "Font failed to load!" << std::endl;
-        return -1;
-    } else {
-        std::cout << "Font loaded successfully" << std::endl;
-    }
+    font.loadFromFile("arial.ttf");
 
     std::string velocityInput = "2.0";
     std::string inletInput = "0.14";

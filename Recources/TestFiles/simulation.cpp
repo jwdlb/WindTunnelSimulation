@@ -122,7 +122,6 @@ double simulation::sampleField(double x, double y, fieldType field) {
            (sx * ty * (*f)[gridHelper(x0, y1)]);
 }
 
-
 double simulation::avgU(int i, int j) {
     return (u[gridHelper(i,j - 1)] + u[gridHelper(i,j)] + u[gridHelper(i + 1, j - 1)] + u[gridHelper(i + 1,j)]) * 0.25;
 }
@@ -220,7 +219,6 @@ void simulation::setObstacle(double xNorm, double yNorm) {
         }
     }
 }
-
 
 void simulation::setScene() {
     double initialVelocity = 2.0;
