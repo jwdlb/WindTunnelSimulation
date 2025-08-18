@@ -6,12 +6,16 @@ WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunne
 
 ## Features
 
-- **Procedural Terrain Generation**: Uses **Perlin noise** to create realistic and dynamic terrain landscapes.
-- **Animal AI with Decision-Time Planning**: Animals use **Pure Monte Carlo Game Search** to move intelligently, avoiding predators, seeking food, and reproducing.
-- **Predator-Prey Dynamics**: Implements a food chain where animals interact based on hierarchical levels, engaging in hunting, fleeing, and breeding behaviors.
-- **Environmental Factors**: Includes terrain types that influence movement and survival.
-- **Graphical Interface**: Built using **JavaFX**, allowing users to visualize the ecosystem in real time.
-- **Event Logging and Statistics**: Displays ecosystem events and population statistics in real-time.
+- **GPU acceleraion**: Utilising the **Cuda** libary to optimise simulation, through parallel proccessing.
+- **Customisability**: Allows the user to choose the object in the tunnel, as well as wind speed and smoke inlet size.
+- **Realistic fluid flow**: Using methods such as semi-lagrangian advection, and iterative gauss-siedel, it provides a realistic simulation for fluids that are incompressable, and non-viscous.
+
+## Comparsion the real world
+
+| Simulation | Aerofoil Template |
+|-----------|-----------------|
+| ![Simulation](simulationImg2.png) | ![Aerofoil](simulationImgtemplateAerofoil.jpg) |
+
 
 ## Prerequisites
 
@@ -45,5 +49,6 @@ We welcome contributions! Please fork the repository and submit pull requests fo
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
 
 
