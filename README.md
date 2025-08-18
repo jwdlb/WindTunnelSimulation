@@ -17,7 +17,7 @@ WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunne
 | ![Simulation](Recources/photos/simulationImg4.png) | ![Aerofoil](Recources/photos/simulationImgtemplateAerofoil.jpg) |
 
 ## Example of the application
-<img scr="Recources/photos/simulationImg4.png">
+<img src="Recources/photos/simulationImg5.png">
 
 ## Prerequisites
 
@@ -33,7 +33,7 @@ Further improvements to be made include:
 - Movable objects
 - Custom Objects
 - 3D simulation
-- 
+
 
 
 
