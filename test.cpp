@@ -6,22 +6,6 @@
 #include <iostream>
 #include <string>
 
-#include <iostream>
-#include <string>
-
-float safeStringToFloat(const std::string& s, float defaultValue) {
-    try {
-        return std::stof(s); // try converting string to float
-    } catch (const std::invalid_argument&) {
-        // thrown if string can't be converted (like "abc")
-        return defaultValue;
-    } catch (const std::out_of_range&) {
-        // thrown if the number is too large for a float
-        return defaultValue;
-    }
-}
-
-
 int main() {
     const int windowWidth = 2000;
     const int windowHeight = 1100;
@@ -32,7 +16,7 @@ int main() {
 
     int selectedShape = 0;
     simulationGPU sim(1000.0, numX, numY, 0.01);
-    sim.setScene();
+    sim.setScene(0);
 
     std::vector<string> shapes = {"Circle", "Ellipse","Square","Wing"};
     std::vector<float> sStore;
@@ -58,28 +42,6 @@ int main() {
         std::cout << "Font loaded successfully" << std::endl;
     }
 
-    std::string velocityInput = "2.0";
-    std::string inletInput = "0.14";
-
-    bool velocityActive = false;
-    bool inletActive = false;
-
-    // Rectangle UI positions
-    sf::RectangleShape velocityBox(sf::Vector2f(220, 60));
-    velocityBox.setPosition(1160, 10);
-    velocityBox.setFillColor(sf::Color(100, 100, 100));
-
-    sf::RectangleShape inletBox(sf::Vector2f(220, 60));
-    inletBox.setPosition(1390, 10);
-    inletBox.setFillColor(sf::Color(100, 100, 100));
-
-    sf::Text velocityText("", font, 25);
-    velocityText.setPosition(velocityBox.getPosition().x + 15, velocityBox.getPosition().y + 12);
-    velocityText.setFillColor(sf::Color::White);
-
-    sf::Text inletText("", font, 25);
-    inletText.setPosition(inletBox.getPosition().x + 15, inletBox.getPosition().y + 12);
-    inletText.setFillColor(sf::Color::White);
 
     // OPTIMIZATION 2: Pre-allocate pixel buffer
     std::vector<sf::Uint8> pixels(numX * numY * 4); // RGBA format
@@ -94,14 +56,13 @@ int main() {
                 window.close();
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                 sf::Vector2i mousePos = sf::Mouse::getPosition(window);
-                velocityActive = velocityBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
-                inletActive = inletBox.getGlobalBounds().contains(mousePos.x, mousePos.y);
+
                 // Check which button was clicked
                 for (int i = 0; i < 4; i++) {
                     sf::FloatRect buttonRect(10 + i * 230, 10, 220, 60);
                     if (buttonRect.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
                         selectedShape = i;
-                        sim.updateShape(i);
+                        sim.setScene(i);
                         sim.getSolidFluidGrid(sStore);
                         //std::cout << "Selected Shape: " << i + 1 << std::endl;
                     }
@@ -109,31 +70,6 @@ int main() {
                 sf::FloatRect buttonRect(10 + 4 * 230, 10, 220, 60);
                 if (buttonRect.contains(static_cast<float>(mousePos.x), static_cast<float>(mousePos.y))) {
                     outline = !outline;
-                }
-            }
-            // Text input
-            if (event.type == sf::Event::TextEntered) {
-                if (velocityActive) {
-                    if (event.text.unicode == 8) { // Backspace
-                        if (!velocityInput.empty()) velocityInput.pop_back();
-                    } else if (event.text.unicode < 128) {
-                        velocityInput += static_cast<char>(event.text.unicode);
-                    }
-                    float temp = safeStringToFloat(velocityInput, 2.0f);
-                    if (temp <= 20.0f && temp > 0.0f) {
-                        sim.updateInletVel(temp);
-                    }
-                }
-                if (inletActive) {
-                    if (event.text.unicode == 8) {
-                        if (!inletInput.empty()) inletInput.pop_back();
-                    } else if (event.text.unicode < 128) {
-                        inletInput += static_cast<char>(event.text.unicode);
-                    }
-                    float temp = safeStringToFloat(inletInput, 0.14f);
-                    if (temp <= 1.0f && temp > 0.0f) {
-                        sim.updateInletSize(temp);
-                    }
                 }
             }
         }
@@ -240,20 +176,6 @@ int main() {
         text.setFillColor(sf::Color::White);
         text.setPosition(40 + 4 * 230, 22);
         window.draw(text);
-
-        // Update text
-        velocityText.setString("Velocity: " + velocityInput);
-        inletText.setString("Inlet Size: " + inletInput);
-
-        // Highlight active box
-        velocityBox.setFillColor(velocityActive ? sf::Color(150, 150, 150) : sf::Color(100, 100, 100));
-        inletBox.setFillColor(inletActive ? sf::Color(150, 150, 150) : sf::Color(100, 100, 100));
-
-        // Draw
-        window.draw(velocityBox);
-        window.draw(velocityText);
-        window.draw(inletBox);
-        window.draw(inletText);
 
         window.display();
         auto renderEnd = std::chrono::high_resolution_clock::now();

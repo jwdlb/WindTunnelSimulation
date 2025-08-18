@@ -9,6 +9,8 @@
 
 using namespace std;
 
+// Initialisation and destruction of class and it's attributes and methods: -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 simulationGPU::simulationGPU(float densityInp, int numXInp, int numYInp, float hInp) {
     density = densityInp;
     numX = numXInp + 2;
@@ -16,6 +18,9 @@ simulationGPU::simulationGPU(float densityInp, int numXInp, int numYInp, float h
     numCells = numX * numY;
     h = hInp;
     numRows = numY;
+    inletVelocity = 2.0f;
+    relativeInletHeight = 0.14f;
+    shape = 0;
 
     // Allocate device memory
     cudaMalloc(&d_u,     numCells * sizeof(float));
@@ -101,16 +106,10 @@ __device__ float sampleField(float x, float y, int fieldType, float *u, float *v
            (sx * ty * f[gridIndex(x0,y1,numY)]);
 }
 
-// __device__ float naca0012(float x, float chord) {
-//     // NACA 0012 thickness distribution (12% of chord)
-//     float t = 0.12f; // thickness ratio
-//     float term1 = 0.2969f * sqrtf(x/chord);
-//     float term2 = -0.1260f * (x/chord);
-//     float term3 = -0.3516f * powf(x/chord,2);
-//     float term4 = 0.2843f * powf(x/chord,3);
-//     float term5 = -0.1015f * powf(x/chord,4);
-//     return 0.5f * t * chord * (term1 + term2 + term3 + term4 + term5);
-// }
+__device__ float nacaThickness(float x, float chord, float t) {
+    float X = x / chord;
+    return 0.5f * t * chord * (0.2969f*sqrtf(X) - 0.1260f*X - 0.3516f*X*X + 0.2843f*X*X*X - 0.1015f*X*X*X*X);
+}
 
 // GPU kernels: -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -233,7 +232,7 @@ __global__ void advectSmoke(float dt, float h, float *u, float *v, float *s, flo
 
     // Kernels for setting up the environment in the application:
 
-__global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *v, float *m) {
+__global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *v, float *m, float inletVelocity, float relativeInletHeight) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -241,7 +240,7 @@ __global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *
 
     int idx = gridIndex(i,j,numY);
 
-    float initialVelocity = 2.0f;
+    float initialVelocity = inletVelocity;
 
     float sTemp = 1.0f; // Fluid
     if (i == 0 || j == 0 || j == numY -1) {
@@ -255,7 +254,7 @@ __global__ void setUpSceneMemory(int numX, int numY, float *s, float *u, float *
     }
 
     // Inlet region marker
-    double inletHeight = 0.14 * numY;
+    float inletHeight = relativeInletHeight * numY;
     int minHeight = floor((0.5 * numY) - (0.5 * inletHeight));
     int maxHeight = floor((0.5 * numY) + (0.5 * inletHeight));
     if (j >= minHeight && j < maxHeight && i == 0) {
@@ -345,13 +344,7 @@ __global__ void setUpSquareObstacle(int numX, int numY, float *s, float *u, floa
     }
 }
 
-__device__ float nacaThickness(float x, float chord, float t) {
-    float X = x / chord;
-    return 0.5f * t * chord * (0.2969f*sqrtf(X) - 0.1260f*X - 0.3516f*X*X + 0.2843f*X*X*X - 0.1015f*X*X*X*X);
-}
-
-__global__ void setUpWingObstacle(int numX, int numY, float *s, float *u, float *v, float *m,
-                                  float xNorm, float yNorm, float h) {
+__global__ void setUpWingObstacle(int numX, int numY, float *s, float *u, float *v, float *m, float xNorm, float yNorm, float h) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -384,9 +377,6 @@ __global__ void setUpWingObstacle(int numX, int numY, float *s, float *u, float 
         }
     }
 }
-
-
-
 
 // Runner methods: ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -477,14 +467,14 @@ void simulationGPU::getSolidFluidGrid(vector<float>& s) {
     cudaMemcpy(s.data(), d_s, numCells * sizeof(float), cudaMemcpyDeviceToHost);
 }
 
-// Setting up environment / scene: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Setting up and changing environment / scene: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-void simulationGPU::setScene(int shape) {
+void simulationGPU::setScene() {
     dim3 blockSize(16,16);
     dim3 gridSize((numX + 15)/16, (numY + 15)/16);
     cout << "shape: " << shape << endl;
     // Initialize the scene
-    setUpSceneMemory<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m);
+    setUpSceneMemory<<<gridSize, blockSize>>>(numX, numY, d_s, d_u, d_v, d_m, inletVelocity, relativeInletHeight);
     cudaDeviceSynchronize();
 
     // Add obstacle at normalized coordinates (0.3, 0.5)
@@ -505,14 +495,27 @@ void simulationGPU::setScene(int shape) {
     cudaDeviceSynchronize();
 }
 
-void simulationGPU::changeShape(int shape) {
- setScene(shape);
+void simulationGPU::updateShape(int shapeInp) {
+    shape = shapeInp;
+    setScene();
+}
+
+void simulationGPU::updateInletVel(float inletVelocityInp) {
+    inletVelocity = inletVelocityInp;
+    cout << "inletVelocity: " << inletVelocity << endl;
+    setScene();
+}
+
+void simulationGPU::updateInletSize(float inletSizeInp) {
+    relativeInletHeight = inletSizeInp;
+    cout << "relativeInletHeight: " << relativeInletHeight << endl;
+    setScene();
 }
 
 // Simulation coordination, singular run: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 void simulationGPU::simulate(float dt, float gravity, int numIterations) {
-    //runIntegration(dt, gravity);
+    //runIntegration(dt, gravity);  don't need gravity for wind tunnel simulations
 
     runClearOldPressures();
 

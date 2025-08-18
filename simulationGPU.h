@@ -10,7 +10,7 @@ public:
     ~simulationGPU();
 
     void simulate(float dt, float gravity, int numIterations);
-    void setScene(int shape);
+    void setScene();
     void runSolveIncompressibility(int numIterations, float dt);
     void runAdvections(float dt);
     void runExtrapolation();
@@ -20,10 +20,18 @@ public:
     void getSmokeDensityGrid(vector<float>& m);
     void getPressureGrid(vector<float>& p);
     void getSolidFluidGrid(vector<float>& s);
-    void changeShape(int shape);
+    void updateShape(int shape);
+    void updateInletVel(float inletVelocityInp);
+    void updateInletSize(float inletVelocityInp);
 
     int numX, numY, numCells, numRows;
     float h, density;
+    int shape;
+
+
+private:
+    float inletVelocity, relativeInletHeight;
+
 
     // Device arrays
     float *d_u, *d_v, *d_newU, *d_newV;
