@@ -1,18 +1,18 @@
 # WindTunnelSim
 
-WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunnel environemnt, around an object of the user's choice. Utilising the Cuda GPU acceleration libary, it provides a high frame rate, high resolution image.
+WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunnel environemnt, around an object of the user's choice. Utilising the Cuda GPU acceleration libary, it provides a high frame rate, high resolution view.
 
 <img src="Recources/photos/simulationImg.png">
 
 ## Features
 
-- **GPU acceleraion**: Utilising the **Cuda** libary to optimise simulation, through parallel proccessing.
+- **GPU acceleraion**: Utilises the **Cuda** libary to optimise simulation, through parallel proccessing.
 - **Customisability**: Allows the user to choose the object in the tunnel, as well as wind speed and smoke inlet size.
-- **Realistic fluid flow**: Using methods such as semi-lagrangian advection, and iterative gauss-siedel, it provides a realistic simulation for fluids that are incompressable, and non-viscous.
+- **Realistic fluid flow**: Using methods such as semi-lagrangian advection, and an iterative approach to the gauss-siedel equations, it provides a realistic simulation for fluids that are incompressable, and non-viscous.
 
-## Comparsion the real world
+## Comparsion to the real world
 
-| Simulation | Aerofoil Template |
+| Simulation | Aerofoil |
 |-----------|-----------------|
 | ![Simulation](Recources/photos/simulationImg4.png) | ![Aerofoil](Recources/photos/simulationImgtemplateAerofoil.jpg) |
 
@@ -33,6 +33,7 @@ Further improvements to be made include:
 - Movable objects
 - Custom Objects
 - 3D simulation
+
 
 
 
