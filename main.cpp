@@ -1,11 +1,7 @@
 #include <SFML/Graphics.hpp>
-#include <imgui.h>
 #include <imgui-SFML.h>
 #include "simulationGPU.h"
 #include <chrono>
-#include <iostream>
-#include <string>
-
 #include <iostream>
 #include <string>
 
@@ -20,7 +16,6 @@ float safeStringToFloat(const std::string& s, float defaultValue) {
         return defaultValue;
     }
 }
-
 
 int main() {
     const int windowWidth = 2000;

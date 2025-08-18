@@ -37,7 +37,3 @@ target_link_libraries(WindTunnelSim PRIVATE
         CUDA::cublas
         CUDA::cufft
 )
-
-
-# CUDA architecture for RTX 4060
-# set_target_properties(WindTunnelSim PROPERTIES CUDA_ARCHITECTURES "89")

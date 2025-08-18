@@ -1,8 +1,6 @@
 #include "cuda_runtime.h"
 #include "simulationGPU.h"
 #include <iostream>
-#include <ctime>
-#include <cstring>
 #include <vector>
 #include <algorithm>
 #include <cmath>
