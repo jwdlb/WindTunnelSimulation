@@ -527,8 +527,7 @@ void simulationGPU::simulate(float dt, float gravity, int numIterations) {
     cudaDeviceSynchronize(); // wait for GPU
 }
 
-// -----------------------------
-// Credits
+// Credits:
 // Portions of this code were inspired by:
 // Copyright 2022 Matthias Müller - Ten Minute Physics
 // MIT License
