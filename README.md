@@ -2,7 +2,7 @@
 
 WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunnel environemnt, around an object of the user's choice. Utilising the Cuda GPU acceleration libary, it provides a high frame rate, high resolution image.
 
-<img src="Recources/photos/simulationImg.png" style="filter: drop-shadow(0 0 5px black);">
+<img src="Recources/photos/simulationImg.png">
 
 ## Features
 
@@ -16,39 +16,25 @@ WindTunnelSim is a C++ simulation tool. It models a fluid within a 2D wind tunne
 |-----------|-----------------|
 | ![Simulation](Recources/photos/simulationImg4.png) | ![Aerofoil](Recources/photos/simulationImgtemplateAerofoil.jpg) |
 
+## Example of the application
+<img scr="Recources/photos/simulationImg4.png">
 
 ## Prerequisites
 
-- **Java Runtime Environment (JRE)**: Ensure you have Java installed. You can download it from the [official Oracle website](https://www.oracle.com/java/technologies/downloads/).
+- **Cuda compatible Nvidia GPU**: Ensure you have a compatible GPU, before downloading. You can check it here: [official Nvidia website](https://developer.nvidia.com/cuda-gpus).
 
 ## Running the Application
 
-To execute the EcoSim JAR file, download the pre-built JAR file from the [releases section](https://github.com/BRSY1/ecosim/releases):
+To execute the simulation execution file, download the Wind Tunnel simulation zip file from the latest release [releases section](https://github.com/jwdlb/WindTunnelSimulation/releases).
+Then unZip in the desired foler, and double click on the executable to run.
 
-**Using the Command Line**:
-   - Open a terminal or command prompt.
-   - Navigate to the directory containing `ecosim.jar`.
-   - Run the following command:
-     
-     ```bash
-     java -jar ecosim-1.0.0.jar
-     ```
-     
-   - Ensure that the JAR file has execute permissions. If not, modify them using:
-     
-     ```bash
-     chmod +x ecosim-1.0.0.jar
-     ```
-     
-   - If double-clicking the JAR file doesn't launch the application, running it via the command line as shown above is recommended.
+## Impovements
+Further improvements to be made include:
+- Movable objects
+- Custom Objects
+- 3D simulation
+- 
 
-## Contributing
-
-We welcome contributions! Please fork the repository and submit pull requests for any enhancements or bug fixes.
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 
 
